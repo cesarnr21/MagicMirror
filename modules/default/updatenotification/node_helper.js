@@ -1,6 +1,6 @@
-const GitHelper = require("./git_helper");
-const defaultModules = require("../defaultmodules");
 const NodeHelper = require("node_helper");
+const defaultModules = require("../defaultmodules");
+const GitHelper = require("./git_helper");
 
 const ONE_MINUTE = 60 * 1000;
 
@@ -19,19 +19,31 @@ module.exports = NodeHelper.create({
 			}
 		}
 
-		await this.gitHelper.add("default");
+		if (!this.ignoreUpdateChecking("MagicMirror")) {
+			await this.gitHelper.add("MagicMirror");
+		}
 	},
 
 	async socketNotificationReceived(notification, payload) {
-		if (notification === "CONFIG") {
-			this.config = payload;
-		} else if (notification === "MODULES") {
-			// if this is the 1st time thru the update check process
-			if (!this.updateProcessStarted) {
-				this.updateProcessStarted = true;
-				await this.configureModules(payload);
-				await this.performFetch();
-			}
+		switch (notification) {
+			case "CONFIG":
+				this.config = payload;
+				break;
+			case "MODULES":
+				// if this is the 1st time thru the update check process
+				if (!this.updateProcessStarted) {
+					this.updateProcessStarted = true;
+					await this.configureModules(payload);
+					await this.performFetch();
+				}
+				break;
+			case "SCAN_UPDATES":
+				// 1st time of check allows to force new scan
+				if (this.updateProcessStarted) {
+					clearTimeout(this.updateTimer);
+					await this.performFetch();
+				}
+				break;
 		}
 	},
 
@@ -40,6 +52,11 @@ module.exports = NodeHelper.create({
 
 		for (const repo of repos) {
 			this.sendSocketNotification("STATUS", repo);
+		}
+
+		if (this.config.sendUpdatesNotifications) {
+			const updates = await this.gitHelper.checkUpdates();
+			if (updates.length) this.sendSocketNotification("UPDATES", updates);
 		}
 
 		this.scheduleNextFetch(this.config.updateInterval);

@@ -5,11 +5,11 @@
  * By Rodrigo Ramírez Norambuena https://rodrigoramirez.com
  * MIT Licensed.
  */
-const Linter = require("eslint").Linter;
-const linter = new Linter();
-
 const path = require("path");
 const fs = require("fs");
+const { Linter } = require("eslint");
+
+const linter = new Linter();
 
 const rootPath = path.resolve(`${__dirname}/../`);
 const Log = require(`${rootPath}/js/logger.js`);
@@ -18,7 +18,6 @@ const Utils = require(`${rootPath}/js/utils.js`);
 /**
  * Returns a string with path of configuration file.
  * Check if set by environment variable MM_CONFIG_FILE
- *
  * @returns {string} path and filename of the config file
  */
 function getConfigFile() {

@@ -18,8 +18,8 @@ const MMSocket = function (moduleName) {
 	if (typeof config !== "undefined" && typeof config.basePath !== "undefined") {
 		base = config.basePath;
 	}
-	this.socket = io("/" + this.moduleName, {
-		path: base + "socket.io"
+	this.socket = io(`/${this.moduleName}`, {
+		path: `${base}socket.io`
 	});
 
 	let notificationCallback = function () {};
@@ -44,10 +44,7 @@ const MMSocket = function (moduleName) {
 		notificationCallback = callback;
 	};
 
-	this.sendNotification = (notification, payload) => {
-		if (typeof payload === "undefined") {
-			payload = {};
-		}
+	this.sendNotification = (notification, payload = {}) => {
 		this.socket.emit(notification, payload);
 	};
 };

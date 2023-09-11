@@ -42,6 +42,14 @@ Module.register("newsfeed", {
 		dangerouslyDisableAutoEscaping: false
 	},
 
+	getUrlPrefix: function (item) {
+		if (item.useCorsProxy) {
+			return `${location.protocol}//${location.host}/cors?url=`;
+		} else {
+			return "";
+		}
+	},
+
 	// Define required scripts.
 	getScripts: function () {
 		return ["moment.js"];
@@ -62,7 +70,7 @@ Module.register("newsfeed", {
 
 	// Define start sequence.
 	start: function () {
-		Log.info("Starting module: " + this.name);
+		Log.info(`Starting module: ${this.name}`);
 
 		// Set locale.
 		moment.locale(config.language);
@@ -142,14 +150,19 @@ Module.register("newsfeed", {
 			sourceTitle: item.sourceTitle,
 			publishDate: moment(new Date(item.pubdate)).fromNow(),
 			title: item.title,
-			url: item.url,
+			url: this.getUrlPrefix(item) + item.url,
 			description: item.description,
 			items: items
 		};
 	},
 
 	getActiveItemURL: function () {
-		return typeof this.newsItems[this.activeItem].url === "string" ? this.newsItems[this.activeItem].url : this.newsItems[this.activeItem].url.href;
+		const item = this.newsItems[this.activeItem];
+		if (item) {
+			return typeof item.url === "string" ? this.getUrlPrefix(item) + item.url : this.getUrlPrefix(item) + item.url.href;
+		} else {
+			return "";
+		}
 	},
 
 	/**
@@ -166,7 +179,6 @@ Module.register("newsfeed", {
 
 	/**
 	 * Generate an ordered list of items for this configured module.
-	 *
 	 * @param {object} feeds An object with feeds returned by the node helper.
 	 */
 	generateFeed: function (feeds) {
@@ -259,7 +271,6 @@ Module.register("newsfeed", {
 
 	/**
 	 * Check if this module is configured to show this feed.
-	 *
 	 * @param {string} feedUrl Url of the feed to check.
 	 * @returns {boolean} True if it is subscribed, false otherwise
 	 */
@@ -274,7 +285,6 @@ Module.register("newsfeed", {
 
 	/**
 	 * Returns title for the specific feed url.
-	 *
 	 * @param {string} feedUrl Url of the feed
 	 * @returns {string} The title of the feed
 	 */
@@ -333,7 +343,7 @@ Module.register("newsfeed", {
 				this.activeItem = 0;
 			}
 			this.resetDescrOrFullArticleAndTimer();
-			Log.debug(this.name + " - going from article #" + before + " to #" + this.activeItem + " (of " + this.newsItems.length + ")");
+			Log.debug(`${this.name} - going from article #${before} to #${this.activeItem} (of ${this.newsItems.length})`);
 			this.updateDom(100);
 		} else if (notification === "ARTICLE_PREVIOUS") {
 			this.activeItem--;
@@ -341,7 +351,7 @@ Module.register("newsfeed", {
 				this.activeItem = this.newsItems.length - 1;
 			}
 			this.resetDescrOrFullArticleAndTimer();
-			Log.debug(this.name + " - going from article #" + before + " to #" + this.activeItem + " (of " + this.newsItems.length + ")");
+			Log.debug(`${this.name} - going from article #${before} to #${this.activeItem} (of ${this.newsItems.length})`);
 			this.updateDom(100);
 		}
 		// if "more details" is received the first time: show article summary, on second time show full article
@@ -350,8 +360,8 @@ Module.register("newsfeed", {
 			if (this.config.showFullArticle === true) {
 				this.scrollPosition += this.config.scrollLength;
 				window.scrollTo(0, this.scrollPosition);
-				Log.debug(this.name + " - scrolling down");
-				Log.debug(this.name + " - ARTICLE_MORE_DETAILS, scroll position: " + this.config.scrollLength);
+				Log.debug(`${this.name} - scrolling down`);
+				Log.debug(`${this.name} - ARTICLE_MORE_DETAILS, scroll position: ${this.config.scrollLength}`);
 			} else {
 				this.showFullArticle();
 			}
@@ -359,12 +369,12 @@ Module.register("newsfeed", {
 			if (this.config.showFullArticle === true) {
 				this.scrollPosition -= this.config.scrollLength;
 				window.scrollTo(0, this.scrollPosition);
-				Log.debug(this.name + " - scrolling up");
-				Log.debug(this.name + " - ARTICLE_SCROLL_UP, scroll position: " + this.config.scrollLength);
+				Log.debug(`${this.name} - scrolling up`);
+				Log.debug(`${this.name} - ARTICLE_SCROLL_UP, scroll position: ${this.config.scrollLength}`);
 			}
 		} else if (notification === "ARTICLE_LESS_DETAILS") {
 			this.resetDescrOrFullArticleAndTimer();
-			Log.debug(this.name + " - showing only article titles again");
+			Log.debug(`${this.name} - showing only article titles again`);
 			this.updateDom(100);
 		} else if (notification === "ARTICLE_TOGGLE_FULL") {
 			if (this.config.showFullArticle) {
@@ -393,7 +403,7 @@ Module.register("newsfeed", {
 		}
 		clearInterval(this.timer);
 		this.timer = null;
-		Log.debug(this.name + " - showing " + this.isShowingDescription ? "article description" : "full article");
+		Log.debug(`${this.name} - showing ${this.isShowingDescription ? "article description" : "full article"}`);
 		this.updateDom(100);
 	}
 });

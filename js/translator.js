@@ -9,28 +9,29 @@
 const Translator = (function () {
 	/**
 	 * Load a JSON file via XHR.
-	 *
 	 * @param {string} file Path of the file we want to load.
-	 * @param {Function} callback Function called when done.
+	 * @returns {Promise<object>} the translations in the specified file
 	 */
-	function loadJSON(file, callback) {
+	async function loadJSON(file) {
 		const xhr = new XMLHttpRequest();
-		xhr.overrideMimeType("application/json");
-		xhr.open("GET", file, true);
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState === 4 && xhr.status === 200) {
-				// needs error handler try/catch at least
-				let fileinfo = null;
-				try {
-					fileinfo = JSON.parse(xhr.responseText);
-				} catch (exception) {
-					// nothing here, but don't die
-					Log.error(" loading json file =" + file + " failed");
+		return new Promise(function (resolve) {
+			xhr.overrideMimeType("application/json");
+			xhr.open("GET", file, true);
+			xhr.onreadystatechange = function () {
+				if (xhr.readyState === 4 && xhr.status === 200) {
+					// needs error handler try/catch at least
+					let fileinfo = null;
+					try {
+						fileinfo = JSON.parse(xhr.responseText);
+					} catch (exception) {
+						// nothing here, but don't die
+						Log.error(` loading json file =${file} failed`);
+					}
+					resolve(fileinfo);
 				}
-				callback(fileinfo);
-			}
-		};
-		xhr.send(null);
+			};
+			xhr.send(null);
+		});
 	}
 
 	return {
@@ -41,21 +42,17 @@ const Translator = (function () {
 
 		/**
 		 * Load a translation for a given key for a given module.
-		 *
 		 * @param {Module} module The module to load the translation for.
 		 * @param {string} key The key of the text to translate.
 		 * @param {object} variables The variables to use within the translation template (optional)
 		 * @returns {string} the translated key
 		 */
-		translate: function (module, key, variables) {
-			variables = variables || {}; //Empty object by default
-
+		translate: function (module, key, variables = {}) {
 			/**
 			 * Combines template and variables like:
 			 * template: "Please wait for {timeToWait} before continuing with {work}."
 			 * variables: {timeToWait: "2 hours", work: "painting"}
 			 * to: "Please wait for 2 hours before continuing with painting."
-			 *
 			 * @param {string} template Text with placeholder
 			 * @param {object} variables Variables for the placeholder
 			 * @returns {string} the template filled with the variables
@@ -64,11 +61,12 @@ const Translator = (function () {
 				if (Object.prototype.toString.call(template) !== "[object String]") {
 					return template;
 				}
+				let templateToUse = template;
 				if (variables.fallback && !template.match(new RegExp("{.+}"))) {
-					template = variables.fallback;
+					templateToUse = variables.fallback;
 				}
-				return template.replace(new RegExp("{([^}]+)}", "g"), function (_unused, varName) {
-					return varName in variables ? variables[varName] : "{" + varName + "}";
+				return templateToUse.replace(new RegExp("{([^}]+)}", "g"), function (_unused, varName) {
+					return varName in variables ? variables[varName] : `{${varName}}`;
 				});
 			}
 
@@ -97,56 +95,46 @@ const Translator = (function () {
 
 		/**
 		 * Load a translation file (json) and remember the data.
-		 *
 		 * @param {Module} module The module to load the translation file for.
 		 * @param {string} file Path of the file we want to load.
 		 * @param {boolean} isFallback Flag to indicate fallback translations.
-		 * @param {Function} callback Function called when done.
 		 */
-		load(module, file, isFallback, callback) {
+		async load(module, file, isFallback) {
 			Log.log(`${module.name} - Load translation${isFallback ? " fallback" : ""}: ${file}`);
 
 			if (this.translationsFallback[module.name]) {
-				callback();
 				return;
 			}
 
-			loadJSON(module.file(file), (json) => {
-				const property = isFallback ? "translationsFallback" : "translations";
-				this[property][module.name] = json;
-				callback();
-			});
+			const json = await loadJSON(module.file(file));
+			const property = isFallback ? "translationsFallback" : "translations";
+			this[property][module.name] = json;
 		},
 
 		/**
 		 * Load the core translations.
-		 *
 		 * @param {string} lang The language identifier of the core language.
 		 */
-		loadCoreTranslations: function (lang) {
+		loadCoreTranslations: async function (lang) {
 			if (lang in translations) {
-				Log.log("Loading core translation file: " + translations[lang]);
-				loadJSON(translations[lang], (translations) => {
-					this.coreTranslations = translations;
-				});
+				Log.log(`Loading core translation file: ${translations[lang]}`);
+				this.coreTranslations = await loadJSON(translations[lang]);
 			} else {
 				Log.log("Configured language not found in core translations.");
 			}
 
-			this.loadCoreTranslationsFallback();
+			await this.loadCoreTranslationsFallback();
 		},
 
 		/**
-		 * Load the core translations fallback.
+		 * Load the core translations' fallback.
 		 * The first language defined in translations.js will be used.
 		 */
-		loadCoreTranslationsFallback: function () {
+		loadCoreTranslationsFallback: async function () {
 			let first = Object.keys(translations)[0];
 			if (first) {
-				Log.log("Loading core translation fallback file: " + translations[first]);
-				loadJSON(translations[first], (translations) => {
-					this.coreTranslationsFallback = translations;
-				});
+				Log.log(`Loading core translation fallback file: ${translations[first]}`);
+				this.coreTranslationsFallback = await loadJSON(translations[first]);
 			}
 		}
 	};

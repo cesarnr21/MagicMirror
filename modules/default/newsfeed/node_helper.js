@@ -6,13 +6,13 @@
  */
 
 const NodeHelper = require("node_helper");
-const NewsfeedFetcher = require("./newsfeedfetcher.js");
 const Log = require("logger");
+const NewsfeedFetcher = require("./newsfeedfetcher");
 
 module.exports = NodeHelper.create({
 	// Override start method.
 	start: function () {
-		Log.log("Starting node helper for: " + this.name);
+		Log.log(`Starting node helper for: ${this.name}`);
 		this.fetchers = [];
 	},
 
@@ -26,7 +26,6 @@ module.exports = NodeHelper.create({
 	/**
 	 * Creates a fetcher for a new feed if it doesn't exist yet.
 	 * Otherwise it reuses the existing one.
-	 *
 	 * @param {object} feed The feed object
 	 * @param {object} config The configuration object
 	 */
@@ -34,6 +33,8 @@ module.exports = NodeHelper.create({
 		const url = feed.url || "";
 		const encoding = feed.encoding || "UTF-8";
 		const reloadInterval = feed.reloadInterval || config.reloadInterval || 5 * 60 * 1000;
+		let useCorsProxy = feed.useCorsProxy;
+		if (useCorsProxy === undefined) useCorsProxy = true;
 
 		try {
 			new URL(url);
@@ -45,8 +46,8 @@ module.exports = NodeHelper.create({
 
 		let fetcher;
 		if (typeof this.fetchers[url] === "undefined") {
-			Log.log("Create new newsfetcher for url: " + url + " - Interval: " + reloadInterval);
-			fetcher = new NewsfeedFetcher(url, reloadInterval, encoding, config.logFeedWarnings);
+			Log.log(`Create new newsfetcher for url: ${url} - Interval: ${reloadInterval}`);
+			fetcher = new NewsfeedFetcher(url, reloadInterval, encoding, config.logFeedWarnings, useCorsProxy);
 
 			fetcher.onReceive(() => {
 				this.broadcastFeeds();
@@ -62,7 +63,7 @@ module.exports = NodeHelper.create({
 
 			this.fetchers[url] = fetcher;
 		} else {
-			Log.log("Use existing newsfetcher for url: " + url);
+			Log.log(`Use existing newsfetcher for url: ${url}`);
 			fetcher = this.fetchers[url];
 			fetcher.setReloadInterval(reloadInterval);
 			fetcher.broadcastItems();

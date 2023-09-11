@@ -1,4 +1,4 @@
-/* global Class */
+/* global Class, performWebRequest */
 
 /* MagicMirror²
  * Module: Weather
@@ -111,45 +111,22 @@ const WeatherProvider = Class.extend({
 		this.delegate.updateAvailable(this);
 	},
 
-	getCorsUrl: function () {
-		if (this.config.mockData || typeof this.config.useCorsProxy === "undefined" || !this.config.useCorsProxy) {
-			return "";
-		} else {
-			return location.protocol + "//" + location.host + "/cors?url=";
+	/**
+	 * A convenience function to make requests.
+	 * @param {string} url the url to fetch from
+	 * @param {string} type what contenttype to expect in the response, can be "json" or "xml"
+	 * @param {Array.<{name: string, value:string}>} requestHeaders the HTTP headers to send
+	 * @param {Array.<string>} expectedResponseHeaders the expected HTTP headers to recieve
+	 * @returns {Promise} resolved when the fetch is done
+	 */
+	fetchData: async function (url, type = "json", requestHeaders = undefined, expectedResponseHeaders = undefined) {
+		const mockData = this.config.mockData;
+		if (mockData) {
+			const data = mockData.substring(1, mockData.length - 1);
+			return JSON.parse(data);
 		}
-	},
-
-	// A convenience function to make requests. It returns a promise.
-	fetchData: function (url, method = "GET", type = "json") {
-		url = this.getCorsUrl() + url;
-		const getData = function (mockData) {
-			return new Promise(function (resolve, reject) {
-				if (mockData) {
-					let data = mockData;
-					data = data.substring(1, data.length - 1);
-					resolve(JSON.parse(data));
-				} else {
-					const request = new XMLHttpRequest();
-					request.open(method, url, true);
-					request.onreadystatechange = function () {
-						if (this.readyState === 4) {
-							if (this.status === 200) {
-								if (type === "xml") {
-									resolve(this.responseXML);
-								} else {
-									resolve(JSON.parse(this.response));
-								}
-							} else {
-								reject(request);
-							}
-						}
-					};
-					request.send();
-				}
-			});
-		};
-
-		return getData(this.config.mockData);
+		const useCorsProxy = typeof this.config.useCorsProxy !== "undefined" && this.config.useCorsProxy;
+		return performWebRequest(url, type, useCorsProxy, requestHeaders, expectedResponseHeaders);
 	}
 });
 
@@ -160,7 +137,6 @@ WeatherProvider.providers = [];
 
 /**
  * Static method to register a new weather provider.
- *
  * @param {string} providerIdentifier The name of the weather provider
  * @param {object} providerDetails The details of the weather provider
  */
@@ -170,23 +146,22 @@ WeatherProvider.register = function (providerIdentifier, providerDetails) {
 
 /**
  * Static method to initialize a new weather provider.
- *
  * @param {string} providerIdentifier The name of the weather provider
  * @param {object} delegate The weather module
  * @returns {object} The new weather provider
  */
 WeatherProvider.initialize = function (providerIdentifier, delegate) {
-	providerIdentifier = providerIdentifier.toLowerCase();
+	const pi = providerIdentifier.toLowerCase();
 
-	const provider = new WeatherProvider.providers[providerIdentifier]();
+	const provider = new WeatherProvider.providers[pi]();
 	const config = Object.assign({}, provider.defaults, delegate.config);
 
 	provider.delegate = delegate;
 	provider.setConfig(config);
 
-	provider.providerIdentifier = providerIdentifier;
+	provider.providerIdentifier = pi;
 	if (!provider.providerName) {
-		provider.providerName = providerIdentifier;
+		provider.providerName = pi;
 	}
 
 	return provider;

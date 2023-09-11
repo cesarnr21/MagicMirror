@@ -4,18 +4,17 @@
  * By Michael Teeuw https://michaelteeuw.nl
  * MIT Licensed.
  */
-const Class = require("./class.js");
-const Log = require("logger");
 const express = require("express");
+const Log = require("logger");
+const Class = require("./class");
 
 const NodeHelper = Class.extend({
 	init() {
 		Log.log("Initializing new module helper ...");
 	},
 
-	loaded(callback) {
+	loaded() {
 		Log.log(`Module helper loaded: ${this.name}`);
-		callback();
 	},
 
 	start() {
@@ -33,7 +32,6 @@ const NodeHelper = Class.extend({
 
 	/**
 	 * This method is called when a socket notification arrives.
-	 *
 	 * @param {string} notification The identifier of the notification.
 	 * @param {*}  payload The payload of the notification.
 	 */
@@ -43,7 +41,6 @@ const NodeHelper = Class.extend({
 
 	/**
 	 * Set the module name.
-	 *
 	 * @param {string} name Module name.
 	 */
 	setName(name) {
@@ -52,7 +49,6 @@ const NodeHelper = Class.extend({
 
 	/**
 	 * Set the module path.
-	 *
 	 * @param {string} path Module path.
 	 */
 	setPath(path) {
@@ -124,7 +120,6 @@ NodeHelper.checkFetchStatus = function (response) {
 /**
  * Look at the specified error and return an appropriate error type, that
  * can be translated to a detailed error message
- *
  * @param {Error} error the error from fetching something
  * @returns {string} the string of the detailed error message in the translations
  */
